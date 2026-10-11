@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#101527">
+<title>Territory Lab — три игровых прототипа</title>
+<style>
+:root{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#fff;background:#0d1324}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{margin:0;overflow:hidden}button{font:inherit;cursor:pointer;touch-action:manipulation}
+#app{position:relative;width:100vw;height:100dvh;overflow:hidden;background:#0e1426}
+#home{position:absolute;inset:0;z-index:4;overflow-y:auto;padding:max(24px,env(safe-area-inset-top)) 22px max(25px,env(safe-area-inset-bottom));background:radial-gradient(ellipse at 82% 13%,#273f76 0,transparent 48%),radial-gradient(ellipse at 4% 76%,#253057 0,transparent 50%),#0e1426}
+.eyebrow{letter-spacing:3px;color:#97baf9;font-size:11px;font-weight:800}.h1{font-size:clamp(30px,9vw,44px);font-weight:950;line-height:1.02;letter-spacing:-1.3px;margin:13px 0 10px}.intro{font-size:14px;line-height:1.55;color:#b7c3df;max-width:420px;margin:0 0 26px}
+.tile{border-radius:25px;position:relative;overflow:hidden;margin-bottom:15px;box-shadow:0 9px 23px #0003;border:1px solid #ffffff20;min-height:148px;padding:20px 19px;display:flex;gap:14px;align-items:center}
+.tile.t1{background:linear-gradient(115deg,#ec4aa3,#a93df2)}.tile.t2{background:linear-gradient(115deg,#0aaea8,#2075de)}.tile.t3{background:linear-gradient(115deg,#ed9a24,#eb5750)}.tile p{font-size:12px;line-height:1.35;max-width:205px;margin:6px 0 12px;color:#fffe}.tile h3{font-size:19px;margin:0;font-weight:900}.tile .go{color:#14204a;background:#fff;padding:8px 17px;border:none;border-radius:100px;font-size:12px;font-weight:850}.symbol{width:91px;height:91px;flex:none;display:flex;align-items:center;justify-content:center;font-size:60px;transform:rotate(-10deg);text-shadow:0 5px 7px #0003;filter:drop-shadow(0 6px 6px #0002)}
+.footnote{color:#8594b6;font-size:11px;line-height:1.6;margin:24px 0 5px}
+#game{position:absolute;inset:0;display:none;background:#141f36}#canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none}
+.hud{position:absolute;top:max(11px,env(safe-area-inset-top));left:13px;right:13px;display:flex;align-items:center;justify-content:space-between;pointer-events:none;gap:8px}
+.hud button{pointer-events:auto;border:none;background:#ffffff20;color:#fff;border-radius:15px;min-width:45px;min-height:45px;font-size:19px;backdrop-filter:blur(10px)}
+#hud-title{text-align:center;font-weight:900;font-size:14px;letter-spacing:.1px}#hud-sub{font-size:12px;color:#cee2ff;font-weight:650;text-align:center;margin-top:4px}
+#hint{position:absolute;bottom:max(17px,env(safe-area-inset-bottom));left:14px;right:14px;text-align:center;font-size:12px;font-weight:650;color:#f5f8ffb8;pointer-events:none;background:#111c31ac;padding:11px;border-radius:12px;backdrop-filter:blur(5px)}
+#result{position:absolute;inset:0;display:none;z-index:3;align-items:center;justify-content:center;padding:25px;background:#060b1abf;backdrop-filter:blur(5px)}.modal{width:min(360px,100%);background:linear-gradient(145deg,#253858,#10172d);border:1px solid #ffffff28;border-radius:25px;padding:28px 24px;text-align:center;box-shadow:0 20px 60px #0008}.modal strong{font-size:28px}.modal p{color:#c9d8ee;font-size:14px;line-height:1.5}.modal button{display:block;width:100%;border:none;border-radius:14px;background:#66e6c9;color:#112a32;padding:14px;font-weight:900;margin-top:12px}.modal button.secondary{background:#ffffff1e;color:#fff}
+</style>
+</head>
+<body><div id="app">
+<main id="home"><div class="eyebrow">PLAYTEST • 3 В 1</div><div class="h1">TERRITORY<br>LAB <span style="color:#77ecd5">✦</span></div><p class="intro">Три быстрые аркады. Попробуй каждую 2–3 раза и выбери, в какую хочется играть ещё.</p>
+<section class="tile t1"><div style="flex:1"><h3>Color Wars</h3><p>Выходи с базы, замыкай след, захватывай поле. Избегай противников!</p><button class="go" data-mode="color">Играть →</button></div><div class="symbol">🎨</div></section>
+<section class="tile t2"><div style="flex:1"><h3>Loop Rush</h3><p>Рисуй замкнутые петли. Лови светящиеся сферы и собирай комбо.</p><button class="go" data-mode="loop">Играть →</button></div><div class="symbol">🌀</div></section>
+<section class="tile t3"><div style="flex:1"><h3>Island Rush</h3><p>Перенаправляй энергию с островов и опережай соперника.</p><button class="go" data-mode="island">Играть →</button></div><div class="symbol">🏝️</div></section>
+<p class="footnote">Работает без сети. Это тест механик, а не финальная графика. Управление рассчитано на сенсорный экран Android.</p></main>
+<section id="game"><canvas id="canvas"></canvas><div class="hud"><button id="back" aria-label="Вернуться">‹</button><div><div id="hud-title">Color Wars</div><div id="hud-sub">0%</div></div><button id="restart" aria-label="Повторить">↻</button></div><div id="hint"></div><div id="result"><div class="modal"><div style="font-size:44px" id="result-emoji">🏆</div><strong id="result-title">Победа!</strong><p id="result-text"></p><button id="again">Играть снова</button><button class="secondary" id="to-menu">Другие игры</button></div></div></section>
+</div>
+<script>
+(()=>{'use strict';
+const $=q=>document.querySelector(q), home=$('#home'), game=$('#game'),canvas=$('#canvas'),ctx=canvas.getContext('2d');
+const W=400;let H=740,scale=1,mode='',state=null,last=0,raf=0,pointer={down:false,x:200,y:450},fx=[];
+const rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const stage=()=>({l:13,r:W-13,t:106,b:H-86,w:W-26,h:H-192});
+function resize(){const r=canvas.getBoundingClientRect();scale=r.width/W;H=r.height/scale;canvas.width=Math.round(r.width*devicePixelRatio);canvas.height=Math.round(r.height*devicePixelRatio);ctx.setTransform(devicePixelRatio*scale,0,0,devicePixelRatio*scale,0,0)}
+function roundRect(x,y,w,h,r,c){ctx.fillStyle=c;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
+function circle(x,y,r,c){ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
+function line(x,y,x2,y2,c,w){ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x2,y2);ctx.stroke()}
+function text(s,x,y,size=16,c='#fff',align='center',weight=800){ctx.font=`${weight} ${size}px system-ui, sans-serif`;ctx.fillStyle=c;ctx.textAlign=align;ctx.textBaseline='middle';ctx.fillText(s,x,y)}
+function particle(x,y,col,n=14){for(let i=0;i<n;i++){const a=rnd(0,Math.PI*2),sp=rnd(38,150);fx.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:rnd(.3,.8),max:.8,col})}}
+function drawParticles(dt){for(let i=fx.length-1;i>=0;i--){let p=fx[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.97;p.vy*=.97;p.life-=dt;if(p.life<=0){fx.splice(i,1);continue}ctx.globalAlpha=clamp(p.life/p.max,0,1);circle(p.x,p.y,3,p.col);ctx.globalAlpha=1}}
+function showResult(title,msg,emoji='🏆'){pointer.down=false;$('#result-title').textContent=title;$('#result-text').textContent=msg;$('#result-emoji').textContent=emoji;$('#result').style.display='flex';state.finished=true}
+function hud(title,detail){$('#hud-title').textContent=title;$('#hud-sub').textContent=detail}
+function start(m){mode=m;home.style.display='none';game.style.display='block';$('#result').style.display='none';pointer.down=false;fx=[];resize();state=m==='color'?new ColorWars():m==='loop'?new LoopRush():new IslandRush();$('#hint').textContent=state.hint;last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(frame)}
+function menu(){cancelAnimationFrame(raf);game.style.display='none';home.style.display='block';mode='';pointer.down=false}
+function frame(t){const dt=Math.min((t-last)/1000,.04)||.016;last=t;ctx.clearRect(0,0,W,H);if(state){if(!state.finished)state.update(dt);state.draw();drawParticles(dt)}raf=requestAnimationFrame(frame)}
+for(const b of document.querySelectorAll('[data-mode]'))b.onclick=()=>start(b.dataset.mode);
+$('#back').onclick=menu;$('#restart').onclick=()=>start(mode);$('#again').onclick=()=>start(mode);$('#to-menu').onclick=menu;
+function coords(e){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)/scale,y:(e.clientY-r.top)/scale}}
+canvas.addEventListener('pointerdown',e=>{if(!state||state.finished)return;pointer={...coords(e),down:true};canvas.setPointerCapture(e.pointerId);state.down(pointer)}, {passive:false});
+canvas.addEventListener('pointermove',e=>{if(!pointer.down||!state||state.finished)return;Object.assign(pointer,coords(e));state.move(pointer)}, {passive:false});
+const up=e=>{if(!pointer.down||!state||state.finished)return;Object.assign(pointer,coords(e));pointer.down=false;state.up(pointer)};
+canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);
+window.addEventListener('resize',()=>{if(mode){resize();start(mode)}});
+function backdrop(c1,c2){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,c1);g.addColorStop(1,c2);ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
+function stageBg(c){const a=stage();roundRect(a.l,a.t,a.w,a.h,22,c);return a}
+function headerDots(a,n=18){ctx.globalAlpha=.22;for(let i=0;i<n;i++)circle(a.l+rnd(0,a.w),a.t+rnd(0,a.h),rnd(1,3),'#fff');ctx.globalAlpha=1}
+
+class ColorWars{
+ constructor(){this.hint='Веди пальцем: выезжай за пределы цвета и возвращайся, чтобы захватить область';this.a=stage();this.cw=45;this.ch=Math.round(this.cw*this.a.h/this.a.w);this.grid=new Uint8Array(this.cw*this.ch);this.trail=[];this.tset=new Set();this.p={x:W/2,y:(this.a.t+this.a.b)/2,r:8};this.target={...this.p};this.speed=118;this.bots=[{x:this.a.l+70,y:this.a.t+90,c:2,vx:64,vy:40},{x:this.a.r-70,y:this.a.b-90,c:3,vx:-63,vy:-42}];this.elapsed=0;this.botTimer=0;this.lives=3;this.finished=false;this.paintDisk(this.p.x,this.p.y,33,1);this.bots.forEach(b=>this.paintDisk(b.x,b.y,32,b.c));this.claimed=0}
+ idx(x,y){return y*this.cw+x}
+ coord(x,y){let gx=Math.floor((x-this.a.l)/this.a.w*this.cw),gy=Math.floor((y-this.a.t)/this.a.h*this.ch);return {x:clamp(gx,0,this.cw-1),y:clamp(gy,0,this.ch-1)}}
+ paintDisk(x,y,r,c){for(let j=0;j<this.ch;j++)for(let i=0;i<this.cw;i++){let xx=this.a.l+(i+.5)*this.a.w/this.cw,yy=this.a.t+(j+.5)*this.a.h/this.ch;if(Math.hypot(xx-x,yy-y)<r)this.grid[this.idx(i,j)]=c}}
+ cell(x,y){const v=this.coord(x,y);return this.idx(v.x,v.y)}
+ down(p){this.target={x:clamp(p.x,this.a.l,this.a.r),y:clamp(p.y,this.a.t,this.a.b)}}move(p){this.down(p)}up(){}
+ reset(){this.trail=[];this.tset.clear();this.p.x=W/2;this.p.y=(this.a.t+this.a.b)/2;this.target={...this.p};this.lives--;particle(this.p.x,this.p.y,'#ff6d90',19);if(this.lives<=0)showResult('Конец игры',`Захвачено ${this.claimed}% карты. Попробуй другой маршрут!`,'💥')}
+ capture(){if(this.trail.length<3){this.trail=[];this.tset.clear();return}const blocked=new Uint8Array(this.grid.length);for(let i=0;i<blocked.length;i++)if(this.grid[i]===1||this.tset.has(i))blocked[i]=1;
+ const seen=new Uint8Array(this.grid.length),q=new Int32Array(this.grid.length);let head=0,tail=0;
+ const push=k=>{if(!blocked[k]&&!seen[k]){seen[k]=1;q[tail++]=k}};
+ for(let x=0;x<this.cw;x++){push(x);push((this.ch-1)*this.cw+x)}for(let y=0;y<this.ch;y++){push(y*this.cw);push(y*this.cw+this.cw-1)}
+ while(head<tail){const k=q[head++],x=k%this.cw,y=(k/this.cw)|0;if(x>0)push(k-1);if(x+1<this.cw)push(k+1);if(y>0)push(k-this.cw);if(y+1<this.ch)push(k+this.cw)}
+ let n=0;for(let k=0;k<this.grid.length;k++){if(this.tset.has(k)||!seen[k]){if(this.grid[k]!==1)n++;this.grid[k]=1}}this.trail=[];this.tset.clear();particle(this.p.x,this.p.y,'#ffdf83',16);if(n>7&&navigator.vibrate)navigator.vibrate(26)}
+ update(dt){this.elapsed+=dt;const dx=this.target.x-this.p.x,dy=this.target.y-this.p.y,d=Math.hypot(dx,dy);if(d>2){let t=Math.min(d,this.speed*dt);this.p.x+=dx/d*t;this.p.y+=dy/d*t}
+ const id=this.cell(this.p.x,this.p.y);if(this.grid[id]!==1){if(!this.tset.has(id)){this.tset.add(id);this.trail.push(id)}if(this.trail.length>this.grid.length*.55)this.reset()}else if(this.trail.length)this.capture();
+ this.botTimer+=dt;
+ for(let b of this.bots){b.x+=b.vx*dt;b.y+=b.vy*dt;if(b.x<this.a.l+15||b.x>this.a.r-15)b.vx*=-1;if(b.y<this.a.t+15||b.y>this.a.b-15)b.vy*=-1;
+ const bi=this.cell(b.x,b.y);if(this.tset.has(bi)){this.reset();break}if(dist(b,this.p)<15&&this.grid[id]!==1){this.reset();break}}
+ if(this.botTimer>5){this.botTimer=0;for(let b of this.bots){this.paintDisk(b.x,b.y,rnd(15,29),b.c);if(Math.random()<.5)b.vy*=-1}}
+ let owned=0;for(let k=0;k<this.grid.length;k++)if(this.grid[k]===1)owned++;this.claimed=Math.round(100*owned/this.grid.length);hud('🎨  Color Wars',`${this.claimed}% территории   ·   ♥ ${this.lives}`);if(this.claimed>=65)showResult('Территория твоя!',`Ты захватил ${this.claimed}% карты. Отличный результат!`)}
+ draw(){backdrop('#302255','#181939');const a=stageBg('#e7efff');ctx.save();ctx.beginPath();ctx.roundRect(a.l,a.t,a.w,a.h,22);ctx.clip();const w=a.w/this.cw,h=a.h/this.ch;
+ const colors=['#ecf3ff','#ff53b1','#40a6fb','#ffc14b'];for(let j=0;j<this.ch;j++)for(let i=0;i<this.cw;i++){const n=this.grid[this.idx(i,j)];if(n){ctx.fillStyle=colors[n];ctx.fillRect(a.l+i*w-.15,a.t+j*h-.15,w+.3,h+.3)}}
+ for(const k of this.trail){const x=k%this.cw,y=(k/this.cw)|0;ctx.fillStyle='#ff99df';ctx.fillRect(a.l+x*w,a.t+y*h,w+.4,h+.4)}
+ ctx.restore();for(const b of this.bots){circle(b.x,b.y,12,'#152550');circle(b.x,b.y,9,colors[b.c]);circle(b.x-3,b.y-2,1.9,'#fff');circle(b.x+3,b.y-2,1.9,'#fff')}
+ circle(this.p.x,this.p.y,12,'#fff');circle(this.p.x,this.p.y,8,'#ed238b');circle(this.p.x+3,this.p.y-2,2.5,'#fff');roundRect(a.l+9,a.t+9,a.w-18,9,5,'#202d4a35');roundRect(a.l+9,a.t+9,(a.w-18)*this.claimed/100,9,5,'#e735a9')}
+}
+
+class LoopRush{
+ constructor(){this.hint='Рисуй пальцем замкнутый круг вокруг светящихся сфер';this.a=stage();this.orbs=[];this.drones=[];this.path=[];this.drawing=false;this.score=0;this.combo=0;this.time=75;this.finished=false;this.fills=[];for(let i=0;i<14;i++)this.spawnOrb();for(let i=0;i<3;i++)this.spawnDrone()}
+ spawnOrb(){this.orbs.push({x:rnd(this.a.l+32,this.a.r-32),y:rnd(this.a.t+35,this.a.b-35),r:rnd(8,13),v:rnd(0,7)})}
+ spawnDrone(){this.drones.push({x:rnd(this.a.l+35,this.a.r-35),y:rnd(this.a.t+45,this.a.b-45),vx:rnd(-46,46),vy:rnd(-47,47),r:13})}
+ down(p){if(p.y<this.a.t||p.y>this.a.b)return;this.path=[{x:p.x,y:p.y}];this.drawing=true}
+ move(p){if(!this.drawing)return;let q={x:clamp(p.x,this.a.l+2,this.a.r-2),y:clamp(p.y,this.a.t+2,this.a.b-2)};if(dist(this.path.at(-1),q)>5)this.path.push(q);if(this.path.length>500)this.path.shift()}
+ up(p){if(!this.drawing)return;this.move(p);this.drawing=false;this.finishLoop()}
+ inside(p,poly){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){let a=poly[i],b=poly[j];if(((a.y>p.y)!==(b.y>p.y))&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)c=!c}return c}
+ finishLoop(){const path=this.path;this.path=[];if(path.length<9){this.combo=0;return}const start=path[0],end=path.at(-1);let len=0;for(let i=1;i<path.length;i++)len+=dist(path[i-1],path[i]);if(dist(start,end)>Math.min(65,len*.17)||len<115){this.combo=0;return}path.push({...path[0]});let got=0;
+ for(let i=this.orbs.length-1;i>=0;i--){if(this.inside(this.orbs[i],path)){got++;particle(this.orbs[i].x,this.orbs[i].y,'#8cfff0',7);this.orbs.splice(i,1)}}for(let i=this.drones.length-1;i>=0;i--){if(this.inside(this.drones[i],path)){got+=3;particle(this.drones[i].x,this.drones[i].y,'#ffafd6',15);this.drones.splice(i,1)}}
+ this.fills.push({path,life:.85});if(got){this.combo++;this.score+=got*10*Math.min(this.combo,5);if(navigator.vibrate)navigator.vibrate(20);for(let i=0;i<Math.max(2,got);i++)this.spawnOrb();while(this.drones.length<3)this.spawnDrone()}else this.combo=0}
+ update(dt){this.time-=dt;if(this.time<=0){this.time=0;showResult('Время вышло!',`Твой результат: ${this.score} очков. Лучшее комбо: попробуй поймать несколько сфер одной петлёй!`,'✨')}
+ for(const d of this.drones){d.x+=d.vx*dt;d.y+=d.vy*dt;if(d.x<this.a.l+16||d.x>this.a.r-16)d.vx*=-1;if(d.y<this.a.t+20||d.y>this.a.b-20)d.vy*=-1}
+ this.fills=this.fills.filter(f=>(f.life-=dt)>0);hud('🌀  Loop Rush',`${this.score} очков   ·   ${Math.ceil(this.time)} сек   ·   ×${Math.max(this.combo,1)}`)}
+ draw(){backdrop('#072e50','#091a3d');const a=stageBg('#113e60');ctx.save();ctx.beginPath();ctx.roundRect(a.l,a.t,a.w,a.h,22);ctx.clip();ctx.strokeStyle='#a6fffa13';ctx.lineWidth=1;for(let x=a.l+15;x<a.r;x+=29){line(x,a.t,x,a.b,'#5de3ed1c',1)}for(let y=a.t+18;y<a.b;y+=29){line(a.l,y,a.r,y,'#5de3ed1c',1)}
+ for(const f of this.fills){ctx.globalAlpha=clamp(f.life*.38,0,.35);ctx.fillStyle='#87fff3';ctx.beginPath();f.path.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fill();ctx.globalAlpha=1}
+ for(const o of this.orbs){circle(o.x,o.y,o.r+7,'#47ecdf2e');circle(o.x,o.y,o.r,'#57f9d9');circle(o.x-3,o.y-3,o.r*.35,'#fff')}
+ for(const d of this.drones){circle(d.x,d.y,17,'#ff579b52');circle(d.x,d.y,12,'#ff5c9d');circle(d.x-4,d.y-2,2,'#fff');circle(d.x+4,d.y-2,2,'#fff');line(d.x-4,d.y+4,d.x+4,d.y+4,'#712454',2)}
+ if(this.path.length>1){ctx.strokeStyle='#e4fff7';ctx.lineWidth=6;ctx.lineJoin='round';ctx.lineCap='round';ctx.shadowColor='#62f4da';ctx.shadowBlur=14;ctx.beginPath();this.path.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.shadowBlur=0;circle(this.path[0].x,this.path[0].y,8,'#ffde88')}
+ ctx.restore();roundRect(a.l+10,a.t+10,a.w-20,8,6,'#041b3199');roundRect(a.l+10,a.t+10,(a.w-20)*this.time/75,8,6,'#63f5db');text('ЗАМКНИ ПЕТЛЮ',200,a.b-25,12,'#b8fff0')}
+}
+
+class IslandRush{
+ constructor(){this.hint='Коснись своего острова, затем цели. Можно также перетащить между островами';this.a=stage();this.finished=false;this.selected=-1;this.units=[];this.elapsed=0;this.aiTimer=1.8;this.nodes=[];const xs=[.17,.49,.81,.31,.69,.12,.49,.87,.31,.68,.16,.50,.83];const ys=[.10,.08,.12,.25,.28,.44,.46,.47,.64,.64,.82,.83,.84];
+ for(let i=0;i<xs.length;i++){this.nodes.push({x:this.a.l+xs[i]*this.a.w,y:this.a.t+ys[i]*this.a.h,n:i===10?42:i===2?37:rnd(10,24),owner:i===10?1:i===2?2:0,r:19+i%3*3,progress:0})}this.nodes[10].n=48;this.nodes[2].n=39}
+ nearest(p){let best=-1,bd=31;for(let i=0;i<this.nodes.length;i++){let d=dist(p,this.nodes[i]);if(d<bd){best=i;bd=d}}return best}
+ down(p){const i=this.nearest(p);this.tapped=i;if(i>=0&&this.nodes[i].owner===1)this.selected=i}
+ move(){}
+ up(p){const k=this.nearest(p);if(k===-1)return;if(this.selected>=0&&k!==this.selected){this.send(this.selected,k,1);this.selected=-1}else if(k>=0&&this.nodes[k].owner===1){this.selected=k}else if(this.selected>=0){this.send(this.selected,k,1);this.selected=-1}}
+ send(from,to,owner){let a=this.nodes[from],b=this.nodes[to];if(a.owner!==owner||dist(a,b)>245||from===to)return false;const qty=Math.floor(a.n*.65);if(qty<3)return false;a.n-=qty;this.units.push({from,to,owner,qty,t:0,len:dist(a,b)});return true}
+ arrival(f){const n=this.nodes[f.to];if(n.owner===f.owner)n.n+=f.qty;else{n.n-=f.qty;if(n.n<=0){n.owner=f.owner;n.n=-n.n+1;particle(n.x,n.y,f.owner===1?'#64ffdc':'#ff736a',23)}}}
+ update(dt){this.elapsed+=dt;for(const n of this.nodes){if(n.owner){n.progress+=dt*(n.owner===1?1.8:1.5);if(n.progress>=1){n.progress=0;n.n=Math.min(99,n.n+1)}}}
+ for(let i=this.units.length-1;i>=0;i--){const f=this.units[i];f.t+=dt/(.4+f.len/270);if(f.t>=1){this.arrival(f);this.units.splice(i,1)}}
+ this.aiTimer-=dt;if(this.aiTimer<=0){this.aiTimer=rnd(2,3.2);let owned=this.nodes.map((n,i)=>({n,i})).filter(q=>q.n.owner===2&&q.n.n>10).sort((a,b)=>b.n.n-a.n.n);if(owned.length){let src=owned[0].i;let dst=this.nodes.map((n,i)=>({n,i})).filter(q=>q.n.owner!==2&&dist(q.n,this.nodes[src])<245).sort((a,b)=>(a.n.owner===1?-30:0)+a.n.n+(dist(a.n,this.nodes[src])/14)-((b.n.owner===1?-30:0)+b.n.n+(dist(b.n,this.nodes[src])/14)))[0];if(dst)this.send(src,dst.i,2)}}
+ const mine=this.nodes.filter(n=>n.owner===1).length,theirs=this.nodes.filter(n=>n.owner===2).length;hud('🏝️  Island Rush',`Твои ${mine}  ·  Соперника ${theirs}  ·  Всего ${this.nodes.length}`);
+ if(mine===this.nodes.length)showResult('Все острова твои!',`Ты захватил ${this.nodes.length} островов за ${Math.round(this.elapsed)} сек.`);if(mine===0)showResult('Соперник победил',`Продержался ${Math.round(this.elapsed)} сек. Попробуй захватывать острова в центре раньше.`,'⚔️')}
+ draw(){backdrop('#332245','#5b2d33');const a=stageBg('#fbe8b4');ctx.save();ctx.beginPath();ctx.roundRect(a.l,a.t,a.w,a.h,22);ctx.clip();
+ for(let i=0;i<20;i++){let x=a.l+((i*103)%a.w),y=a.t+((i*191)%a.h);circle(x,y,17,'#f9d69c70')}
+ for(let i=0;i<this.nodes.length;i++)for(let j=i+1;j<this.nodes.length;j++)if(dist(this.nodes[i],this.nodes[j])<166)line(this.nodes[i].x,this.nodes[i].y,this.nodes[j].x,this.nodes[j].y,'#ad8d75aa',2);
+ for(const f of this.units){let s=this.nodes[f.from],d=this.nodes[f.to],x=s.x+(d.x-s.x)*f.t,y=s.y+(d.y-s.y)*f.t;line(s.x,s.y,d.x,d.y,f.owner===1?'#12ad99aa':'#e74b63aa',3);circle(x,y,6,f.owner===1?'#34edba':'#ff5878');text(String(f.qty),x,y-14,11,'#1c2340')}
+ for(let i=0;i<this.nodes.length;i++){const n=this.nodes[i],color=n.owner===1?'#25c7a3':n.owner===2?'#ff5b6f':'#d7af78';circle(n.x,n.y+5,n.r+4,'#53436b50');circle(n.x,n.y,n.r+3,'#ffffff');circle(n.x,n.y,n.r,color);circle(n.x-5,n.y-7,n.r*.44,'#ffffff3c');if(n.owner===1)circle(n.x,n.y,n.r*.58,'#079f90');if(n.owner===2)circle(n.x,n.y,n.r*.58,'#d84364');text(String(Math.floor(n.n)),n.x,n.y,16,'#fff');if(i===this.selected){ctx.strokeStyle='#fff783';ctx.lineWidth=4;ctx.beginPath();ctx.arc(n.x,n.y,n.r+9,0,Math.PI*2);ctx.stroke()}}
+ ctx.restore();text('ЗЕЛЁНЫЕ — ТВОИ    ·    КРАСНЫЕ — СОПЕРНИКА',W/2,a.b-18,10,'#5b4b56')}
+}
+
+resize();
+})();
+</script></body></html>

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#17132f">
+<title>Color Wars: Связь — тест механики</title>
+<style>
+:root{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:white;background:#151329}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;overflow:hidden}button{font:inherit;touch-action:manipulation;cursor:pointer}
+#app{height:100dvh;width:100vw;position:relative;overflow:hidden;background:#17132f}
+#gameCanvas{display:block;width:100%;height:100%;touch-action:none;user-select:none}
+#hud{position:absolute;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;pointer-events:none}
+.btn{background:#ffffff24;backdrop-filter:blur(10px);border:1px solid #ffffff38;border-radius:15px;color:white;min-width:47px;min-height:47px;font-size:22px;pointer-events:auto;box-shadow:0 5px 20px #0002}
+.title{font-size:14px;font-weight:900;text-align:center;line-height:1.3}.subtitle{color:#e4d3f4;font-size:12px;text-align:center;margin-top:4px;font-weight:700}
+#footer{position:absolute;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));display:flex;align-items:flex-end;gap:10px;justify-content:space-between}
+#help{flex:1;background:#140f2bd9;color:#ecdbff;border:1px solid #ffffff22;border-radius:16px;padding:12px;font-size:12px;line-height:1.5;max-width:310px;min-height:62px}
+#pulse{min-width:94px;min-height:68px;border-radius:19px;border:2px solid #ffe9ff;background:linear-gradient(150deg,#ff75c6,#c02bbb);color:white;box-shadow:0 8px 25px #e43da355;font-size:13px;font-weight:900;line-height:1.15;position:relative;overflow:hidden}
+#pulse:disabled{opacity:.55;filter:saturate(.5)}#pulse small{display:block;font-size:10px;color:#ffe5f4;margin-top:5px}#charge{position:absolute;bottom:0;left:0;height:5px;width:0%;background:white;transition:width .2s}
+#toast{position:absolute;left:10%;right:10%;top:78px;text-align:center;pointer-events:none;color:#fff2a0;font-weight:900;font-size:20px;text-shadow:0 2px 10px #080523;opacity:0;transition:opacity .25s;white-space:pre-line}
+#overlay{position:absolute;inset:0;background:#0c071ce5;z-index:3;display:flex;align-items:center;justify-content:center;padding:22px;backdrop-filter:blur(7px)}
+.panel{width:min(375px,100%);border:1px solid #ffffff2d;border-radius:27px;background:linear-gradient(160deg,#392454,#18142b);padding:25px;text-align:center;box-shadow:0 28px 60px #0008}
+.panel .hero{font-size:58px}.panel h1{font-size:25px;line-height:1.18;margin:9px 0 10px}.panel p{font-size:14px;line-height:1.55;color:#d7cdeb}.panel b{color:#ffda83}
+.panel button{width:100%;padding:15px;border:0;border-radius:15px;background:#ff77c4;color:#401039;font-weight:950;margin-top:13px;font-size:15px}
+.panel button.secondary{background:#ffffff22;color:white;margin-top:9px}
+#version{position:absolute;top:max(65px,calc(env(safe-area-inset-top) + 65px));right:18px;font-size:10px;color:#ffe7ffb0;pointer-events:none}
+</style>
+</head>
+<body><div id="app">
+<canvas id="gameCanvas" aria-label="Поле для захвата территории"></canvas>
+<div id="hud"><button class="btn" id="info" aria-label="Правила">?</button><div><div class="title">🎨 COLOR WARS: СВЯЗЬ</div><div class="subtitle" id="stats">Твоя территория · 0%</div></div><button class="btn" id="restart" aria-label="Заново">↻</button></div>
+<div id="version">ПРОТОТИП 0.2 · ОФЛАЙН</div>
+<div id="toast"></div>
+<div id="footer"><div id="help">☝️ Коснись карты — персонаж поедет к точке. Замкни маршрут обратно в розовую территорию.</div><button id="pulse" disabled>✂ РАЗРЕЗ<small id="pulseCaption">ЗАРЯДКА</small><div id="charge"></div></button></div>
+<div id="overlay"><div class="panel"><div class="hero" id="modalEmoji">✂️</div><h1 id="modalTitle">Цветовая война: Связь</h1><p id="modalText">Теперь территория <b>зависит от базы</b>. Перерезай узкие цветные мосты врага: оторванные участки мигают и исчезают через несколько секунд.<br><br>Двигайся касаниями. Замыкай петли, чтобы расширяться. Кнопка <b>✂ РАЗРЕЗ</b> разрывает ближайшее вражеское соединение.</p><button id="play">Начать игру</button><button class="secondary" id="reload" style="display:none">Ещё раз</button></div></div>
+</div>
+<script>
+(()=>{'use strict';
+const $=s=>document.querySelector(s), canvas=$('#gameCanvas'),ctx=canvas.getContext('2d');const W=400;let H=790,scale=1,deviceScale=1,model=null,last=0,raf=0,paused=true;
+const TAU=Math.PI*2,rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),hyp=(x,y)=>Math.hypot(x,y);
+function resize(){const r=canvas.getBoundingClientRect();scale=r.width/W;H=r.height/scale;deviceScale=Math.min(2.2,window.devicePixelRatio||1);canvas.width=Math.round(r.width*deviceScale);canvas.height=Math.round(r.height*deviceScale);ctx.setTransform(deviceScale*scale,0,0,deviceScale*scale,0,0)}
+const bounds=()=>({l:13,r:W-13,t:105,b:H-105,w:W-26,h:H-210});
+function circle(x,y,r,col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill()}
+function rect(x,y,w,h,rad,col){ctx.fillStyle=col;ctx.beginPath();ctx.roundRect(x,y,w,h,rad);ctx.fill()}
+function line(ax,ay,bx,by,col,width){ctx.strokeStyle=col;ctx.lineWidth=width;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke()}
+function label(s,x,y,size,color='#fff',weight=900){ctx.font=`${weight} ${size}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=color;ctx.fillText(s,x,y)}
+function toast(s){$('#toast').textContent=s;$('#toast').style.opacity='1';if(model)model.toastTime=1.8}
+function frame(ts){let dt=Math.min((ts-last)/1000,.05)||.016;last=ts;if(!paused&&model){model.update(dt);model.draw();}raf=requestAnimationFrame(frame)}
+function modal(title,body,emoji='✨',end=false){paused=true;$('#modalTitle').textContent=title;$('#modalText').innerHTML=body;$('#modalEmoji').textContent=emoji;$('#play').textContent=end?'Играть снова':'Продолжить';$('#overlay').style.display='flex'}
+function start(){paused=false;$('#overlay').style.display='none';model=new Game();$('#pulse').disabled=false;last=performance.now()}
+$('#play').onclick=()=>{if(model&&!model.ended){paused=false;$('#overlay').style.display='none';last=performance.now()}else start()};
+$('#info').onclick=()=>modal('Как играть','Расширяй <b>розовую территорию</b>, замыкая маршрут обратно в свою зону.<br><br>У каждой команды есть <b>база ★</b>. Если перерезать соединение с ней, оторванные части начинают мигать и исчезают через <b>4 секунды</b>.<br><br>Кнопка <b>✂ РАЗРЕЗ</b> работает вблизи вражеских владений и перезаряжается 8 секунд. Двигайся касанием или веди пальцем.');
+$('#restart').onclick=()=>start();$('#pulse').onclick=()=>{if(model&&!paused)model.pulse()};
+$('#play').textContent='Начать игру';
+function coords(e){const r=canvas.getBoundingClientRect();return {x:clamp((e.clientX-r.left)/scale,13,387),y:clamp((e.clientY-r.top)/scale,105,H-105)}}
+let moving=false;canvas.addEventListener('pointerdown',e=>{if(paused||!model)return;moving=true;model.target=coords(e);canvas.setPointerCapture(e.pointerId)});canvas.addEventListener('pointermove',e=>{if(moving&&!paused&&model)model.target=coords(e)});const endDrag=()=>moving=false;canvas.addEventListener('pointerup',endDrag);canvas.addEventListener('pointercancel',endDrag);
+window.addEventListener('resize',()=>{resize();if(model){model.resize();}});
+class Game{
+ constructor(){this.a=bounds();this.nx=48;this.ny=Math.max(47,Math.round(this.nx*this.a.h/this.a.w));this.n=this.nx*this.ny;this.grid=new Uint8Array(this.n);this.core=new Uint8Array(this.n);this.connected=new Uint8Array(this.n);this.disconnected=new Float32Array(this.n);this.trail=[];this.tset=new Set();this.elapsed=0;this.tick=.2;this.pulseCooldown=1.8;this.pulseFx=null;this.toastTime=0;this.ended=false;this.lives=3;this.claimed=0;this.lost=0;this.cutCount=0;this.capturedCount=0;this.player={x:200,y:this.a.t+this.a.h*.77};this.target={...this.player};this.moveDir={x:0,y:-1};this.speed=153;this.bots=[
+ {owner:2,x:this.a.l+this.a.w*.19,y:this.a.t+this.a.h*.16,color:'#3ba5fa',tx:0,ty:0,speed:58,timeout:0,neck:null},
+ {owner:3,x:this.a.l+this.a.w*.81,y:this.a.t+this.a.h*.16,color:'#ffb54a',tx:0,ty:0,speed:52,timeout:0,neck:null}];
+ this.seed();this.recompute();this.score()}
+ idx(x,y){return y*this.nx+x}
+ rc(k){return {x:k%this.nx,y:Math.floor(k/this.nx)}}
+ coord(x,y){return {x:clamp(Math.floor((x-this.a.l)/this.a.w*this.nx),0,this.nx-1),y:clamp(Math.floor((y-this.a.t)/this.a.h*this.ny),0,this.ny-1)}}
+ cell(x,y){const c=this.coord(x,y);return this.idx(c.x,c.y)}
+ pos(k){const c=this.rc(k);return {x:this.a.l+(c.x+.5)*this.a.w/this.nx,y:this.a.t+(c.y+.5)*this.a.h/this.ny}}
+ owner(k,team){if(this.core[k]&&this.core[k]!==team)return false; if(this.grid[k]===team)return false;this.grid[k]=team;this.disconnected[k]=0;return true}
+ disk(x,y,r,team,base=false){const x0=clamp(this.coord(x-r,y).x,0,this.nx-1),x1=this.coord(x+r,y).x,y0=this.coord(x,y-r).y,y1=this.coord(x,y+r).y;
+ for(let j=y0;j<=y1;j++)for(let i=x0;i<=x1;i++){const k=this.idx(i,j),p=this.pos(k);if(hyp(p.x-x,p.y-y)<r){this.owner(k,team);if(base&&hyp(p.x-x,p.y-y)<19){this.core[k]=team;this.grid[k]=team}}}}
+ stroke(ax,ay,bx,by,r,team){const n=Math.max(1,Math.ceil(hyp(ax-bx,ay-by)/3));for(let i=0;i<=n;i++){const f=i/n;this.disk(ax+(bx-ax)*f,ay+(by-ay)*f,r,team)}}
+ seed(){const a=this.a,p=this.player;this.disk(p.x,p.y,37,1,true);const py=a.t+a.h*.51;this.stroke(p.x,p.y,p.x+4,py,6,1);this.disk(p.x+4,py,38,1);
+ for(const bot of this.bots){this.disk(bot.x,bot.y,34,bot.owner,true);const sign=bot.owner===2?1:-1;const satellite={x:bot.x+sign*72,y:bot.y+132};bot.neck={x:bot.x+sign*36,y:bot.y+68,dx:sign*72,dy:132};bot.satellite=satellite;
+ this.stroke(bot.x,bot.y,satellite.x,satellite.y,6,bot.owner);this.disk(satellite.x,satellite.y,43,bot.owner);bot.tx=bot.x;bot.ty=bot.y}
+ }
+ recompute(){this.connected.fill(0);const q=new Int32Array(this.n);for(let team=1;team<=3;team++){
+  let start=0,end=0;for(let k=0;k<this.n;k++)if(this.core[k]===team&&this.grid[k]===team){this.connected[k]=team;q[end++]=k}
+  while(start<end){const k=q[start++],x=k%this.nx,y=(k/this.nx)|0;const next=(id)=>{if(this.grid[id]===team&&this.connected[id]!==team){this.connected[id]=team;q[end++]=id}};
+   if(x>0)next(k-1);if(x<this.nx-1)next(k+1);if(y>0)next(k-this.nx);if(y<this.ny-1)next(k+this.nx)}
+ }
+ for(let k=0;k<this.n;k++){if(this.grid[k]&&this.connected[k]!==this.grid[k]){if(this.disconnected[k]===0)this.disconnected[k]=4.0}else this.disconnected[k]=0}}
+ score(){let p=0,o=0,d=0;for(let k=0;k<this.n;k++){if(this.grid[k]===1)p++;else if(this.grid[k]>1)o++;if(this.disconnected[k])d++}this.claimed=Math.round(100*p/this.n);this.others=Math.round(100*o/this.n);this.danger=d;
+ $('#stats').textContent=`🩷 ${this.claimed}%  ·  💙🧡 ${this.others}%  ·  ♥ ${this.lives}  ·  ✂ ${this.cutCount}`;
+ $('#pulse').disabled=this.pulseCooldown>0;$('#pulseCaption').textContent=this.pulseCooldown>0?`${Math.ceil(this.pulseCooldown)} СЕК`:'ГОТОВО!';$('#charge').style.width=`${100*(1-clamp(this.pulseCooldown/8,0,1))}%`}
+ resetTrail(){this.trail=[];this.tset.clear();this.lives--;this.player.x=this.a.l+this.a.w*.5;this.player.y=this.a.t+this.a.h*.77;this.target={...this.player};toast('💔 СЛЕД ПЕРЕСЕЧЁН');if(this.lives<=0){this.ended=true;modal('Попробуем ещё!',`Контролировал ${this.claimed}% карты. Разрезов: ${this.cutCount}.`,'💔',true)}}
+ capture(){if(this.trail.length<3){this.trail=[];this.tset.clear();return}
+ const walls=new Uint8Array(this.n),seen=new Uint8Array(this.n),q=new Int32Array(this.n);for(let k=0;k<this.n;k++)if(this.connected[k]===1||this.tset.has(k))walls[k]=1;
+ let head=0,tail=0;const push=k=>{if(!walls[k]&&!seen[k]){seen[k]=1;q[tail++]=k}};
+ for(let i=0;i<this.nx;i++){push(i);push((this.ny-1)*this.nx+i)}for(let j=0;j<this.ny;j++){push(j*this.nx);push(j*this.nx+this.nx-1)}
+ while(head<tail){const k=q[head++],x=k%this.nx,y=(k/this.nx)|0;if(x>0)push(k-1);if(x+1<this.nx)push(k+1);if(y>0)push(k-this.nx);if(y+1<this.ny)push(k+this.nx)}
+ let count=0;for(let k=0;k<this.n;k++){if(this.tset.has(k)||!seen[k]){if(this.owner(k,1))count++}}this.trail=[];this.tset.clear();this.capturedCount+=count;
+ if(count>=4){this.pulseCooldown=Math.max(0,this.pulseCooldown-Math.min(3.5,count/14));toast(`+${(100*count/this.n).toFixed(1)}%   ЗАХВАЧЕНО`);if(navigator.vibrate)navigator.vibrate(18)}this.recompute()}
+ pulse(){if(this.pulseCooldown>0)return false;let target=null,best=128,dir={x:0,y:1};
+ // Prefer vulnerable, highlighted bottlenecks over a random enemy pixel.
+ for(const bot of this.bots){const k=this.cell(bot.neck.x,bot.neck.y);const d=hyp(this.player.x-bot.neck.x,this.player.y-bot.neck.y);if(this.grid[k]===bot.owner&&d<best){best=d;target={...bot.neck};dir={x:bot.neck.dx,y:bot.neck.dy}}}
+ if(!target){for(let k=0;k<this.n;k++)if(this.grid[k]>1&&!this.core[k]){const p=this.pos(k),d=hyp(p.x-this.player.x,p.y-this.player.y);if(d<best){best=d;target=p;dir={x:p.x-this.player.x,y:p.y-this.player.y}}}}
+ if(!target){toast('Подъедь ближе к цветному мосту');return false}
+ this.pulseCooldown=8;const len=hyp(dir.x,dir.y)||1,px=-dir.y/len,py=dir.x/len;
+ const ax=target.x-px*33,ay=target.y-py*33,bx=target.x+px*33,by=target.y+py*33;
+ this.pulseFx={ax,ay,bx,by,time:.7};let cleared=0;
+ for(let i=0;i<=34;i++){const f=i/34,x=ax+(bx-ax)*f,y=ay+(by-ay)*f;for(let oy=-6;oy<=6;oy+=4)for(let ox=-6;ox<=6;ox+=4){const k=this.cell(x+ox,y+oy);if(this.grid[k]>1&&!this.core[k]){this.grid[k]=0;this.disconnected[k]=0;cleared++}}}
+ this.recompute();let newly=0;for(let k=0;k<this.n;k++)if(this.grid[k]>1&&this.disconnected[k])newly++;
+ this.cutCount++;toast(newly>8?`✂ ОТРЕЗАНО: ${Math.round(100*newly/this.n)}%`:'✂ МОСТ РАЗРЕЗАН');if(navigator.vibrate)navigator.vibrate([15,30,40]);return true}
+ ai(dt){for(const bot of this.bots){bot.timeout-=dt;const d=hyp(bot.tx-bot.x,bot.ty-bot.y);if(d<8||bot.timeout<=0){bot.timeout=rand(2.5,5.5);if(Math.random()<.55&&this.elapsed>7){let candidates=[];for(let k=0;k<this.n;k++)if(this.grid[k]===1){const p=this.pos(k);if(hyp(bot.x-p.x,bot.y-p.y)<160)candidates.push(p)}if(candidates.length){let p=candidates[Math.floor(Math.random()*candidates.length)];bot.tx=p.x;bot.ty=p.y}else{bot.tx=clamp(bot.x+rand(-95,95),this.a.l+18,this.a.r-18);bot.ty=clamp(bot.y+rand(-85,110),this.a.t+15,this.a.b-15)}}else{bot.tx=clamp(bot.x+rand(-115,115),this.a.l+19,this.a.r-19);bot.ty=clamp(bot.y+rand(-85,120),this.a.t+17,this.a.b-17)}}
+ const dx=bot.tx-bot.x,dy=bot.ty-bot.y,mag=hyp(dx,dy);if(mag>.4){const distance=Math.min(mag,bot.speed*dt),x=bot.x+dx/mag*distance,y=bot.y+dy/mag*distance;this.stroke(bot.x,bot.y,x,y,5.5,bot.owner);bot.x=x;bot.y=y}
+ // Contact with an unfinished trace is dangerous, but each bot must physically hit it.
+ if(this.tset.has(this.cell(bot.x,bot.y))&&!this.ended){this.resetTrail()}
+ }}
+ update(dt){this.elapsed+=dt;this.pulseCooldown=Math.max(0,this.pulseCooldown-dt);if(this.pulseFx)this.pulseFx.time-=dt;if(this.toastTime>0){this.toastTime-=dt;if(this.toastTime<=0)$('#toast').style.opacity='0'}
+ const dx=this.target.x-this.player.x,dy=this.target.y-this.player.y,dist=hyp(dx,dy);if(dist>1){const travel=Math.min(dist,this.speed*dt),steps=Math.max(1,Math.ceil(travel/3));const vx=dx/dist*travel/steps,vy=dy/dist*travel/steps;this.moveDir={x:dx/dist,y:dy/dist};for(let s=0;s<steps;s++){this.player.x=clamp(this.player.x+vx,this.a.l+3,this.a.r-3);this.player.y=clamp(this.player.y+vy,this.a.t+3,this.a.b-3);const k=this.cell(this.player.x,this.player.y);if(this.connected[k]===1){if(this.trail.length)this.capture()}else if(!this.tset.has(k)){this.tset.add(k);this.trail.push(k)}if(this.trail.length>this.n*.40){this.resetTrail();break}}}
+ this.ai(dt);this.tick-=dt;if(this.tick<=0){this.tick=.15;this.recompute()}
+ for(let k=0;k<this.n;k++)if(this.disconnected[k]>0){this.disconnected[k]-=dt;if(this.disconnected[k]<=0){this.disconnected[k]=0;if(this.grid[k]===1)this.lost++;this.grid[k]=0}}
+ this.score();if(this.claimed>=50){this.ended=true;modal('Территория под контролем!',`Ты захватил ${this.claimed}% поля и разрезал врагов ${this.cutCount} раз.`, '🏆',true)}
+ }
+ draw(){const g=ctx.createLinearGradient(0,0,W,H);g.addColorStop(0,'#342550');g.addColorStop(1,'#15122e');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);const a=this.a;rect(a.l,a.t,a.w,a.h,23,'#eef3ff');ctx.save();ctx.beginPath();ctx.roundRect(a.l,a.t,a.w,a.h,23);ctx.clip();const w=a.w/this.nx,h=a.h/this.ny;
+ const colors=['#ecf3ff','#ff5fb9','#54b6ff','#ffca68'];for(let j=0;j<this.ny;j++)for(let i=0;i<this.nx;i++){const k=this.idx(i,j),team=this.grid[k];if(!team)continue;let col=colors[team];if(this.disconnected[k]>0){const blink=Math.floor(this.elapsed*5)%2===0;col=blink?'#ffe6bd':'#97a2b3'}ctx.fillStyle=col;ctx.fillRect(a.l+i*w-.12,a.t+j*h-.12,w+.25,h+.25)}
+ for(const k of this.trail){let x=k%this.nx,y=(k/this.nx)|0;ctx.fillStyle='#ff248e';ctx.fillRect(a.l+x*w-.5,a.t+y*h-.5,w+1,h+1)}
+ for(const bot of this.bots){const neck=bot.neck;const connected=this.grid[this.cell(neck.x,neck.y)]===bot.owner;if(connected){ctx.save();ctx.setLineDash([4,5]);ctx.lineWidth=2.5;ctx.strokeStyle='#33204fb9';ctx.beginPath();ctx.arc(neck.x,neck.y,15,0,TAU);ctx.stroke();ctx.restore();label('✂',neck.x,neck.y-20,12,'#291e4b')}}
+ // Crossed core is intentionally not damageable.
+ const bases=[{x:this.player.x,y:this.player.y},{x:this.a.l+this.a.w*.5,y:this.a.t+this.a.h*.77},...this.bots];for(let i=1;i<bases.length;i++){const p=bases[i],col=i===1?'#e22f90':i===2?'#247bc9':'#bb7a1f';circle(p.x,p.y,18,'#ffffffc7');circle(p.x,p.y,14,col);label('★',p.x,p.y,17)}
+ ctx.restore();for(const bot of this.bots){circle(bot.x,bot.y,11,'#fff');circle(bot.x,bot.y,8,bot.color);circle(bot.x-2.5,bot.y-2,1.7,'#1c204a');circle(bot.x+2.5,bot.y-2,1.7,'#1c204a')}
+ circle(this.player.x,this.player.y,13,'#fff');circle(this.player.x,this.player.y,9,'#e82896');circle(this.player.x+2,this.player.y-2,2.5,'#fff');
+ if(this.pulseFx&&this.pulseFx.time>0){const f=this.pulseFx;ctx.save();ctx.globalAlpha=Math.min(1,f.time*2.5);line(f.ax,f.ay,f.bx,f.by,'#fff7c5',10*f.time+2);line(f.ax,f.ay,f.bx,f.by,'#ff2caa',3);ctx.restore()}
+ rect(a.l+10,a.t+9,a.w-20,9,6,'#2917424a');rect(a.l+10,a.t+9,(a.w-20)*this.claimed/100,9,6,'#ff2c94');
+ if(this.danger>0)label(`⚡ Отрезанные области исчезнут через 4 сек`,W/2,a.b-23,11,'#ffffff')
+ }
+ resize(){const old=this.a;const nw=bounds();const sx=nw.w/old.w,sy=nw.h/old.h;
+ const scalePos=p=>{p.x=nw.l+(p.x-old.l)*sx;p.y=nw.t+(p.y-old.t)*sy};scalePos(this.player);scalePos(this.target);for(const b of this.bots){scalePos(b);b.tx=nw.l+(b.tx-old.l)*sx;b.ty=nw.t+(b.ty-old.t)*sy;scalePos(b.neck);scalePos(b.satellite)}this.a=nw}
+}
+window.__territoryTest={get model(){return model},start};
+resize();raf=requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
